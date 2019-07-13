@@ -8,3 +8,7 @@ Simple Server是一套基于.Net Core，用于UTF8文本通讯的简单C/S服务
 ## 语言和框架的选择
 
 作为.Net的老程序员，我最大的技术凭借也是基于.Net的，鉴于目前良好的开发氛围和开源的先天条件，我选择基于.Net Core进行开发，语言则是.Net的优先语言C#。
+
+## Nuget引用
+
+此组件目前已支持在Nuget仓库下载，Nuget页面为[https://www.nuget.org/packages/dotnet-core-ssr/](https://www.nuget.org/packages/dotnet-core-ssr/)
