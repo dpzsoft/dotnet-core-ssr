@@ -2,22 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
-    <PackageId>dotnet-core-ssr</PackageId>
-    <Version>1.0.1907.2</Version>
-    <Authors>d.p.z software studio</Authors>
-    <Description>Simple Server是一套基于.Net Core，用于UTF8文本通讯的简单C/S服务开发组件</Description>
-    <Product>Simple Server(ssr)</Product>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Copyright></Copyright>
-    <PackageLicenseExpression></PackageLicenseExpression>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath></PackagePath>
-    </None>
-  </ItemGroup>
 
 </Project>
