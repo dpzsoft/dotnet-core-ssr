@@ -5,11 +5,11 @@ using System.Text;
 namespace ssr {
 
     /// <summary>
-    /// 服务器事件宿主接口
+    /// 事件宿主接口
     /// </summary>
-    public interface IServerHost {
+    public interface IHost {
 
-        void OnRecieve(ServerHostRecieveEventArgs e);
+        void OnRecieve(HostRecieveEventArgs e);
 
     }
 }

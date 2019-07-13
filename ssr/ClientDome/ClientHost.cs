@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Text;
 using ssr;
 
-namespace ServerDome {
+namespace ClientDome {
 
     /// <summary>
     /// 服务器事件宿主
     /// </summary>
-    public class ServerHost : ssr.IHost {
+    public class ClientHost : ssr.IHost {
 
         // 数据模式定义
         private bool _data = false;
@@ -23,8 +23,9 @@ namespace ServerDome {
                 Console.WriteLine($"-> 接受数据 -> {e.Content}");
 
                 // 测试协议，原封内容发回客户端
-                ServerHostRecieveEventArgs args = (ServerHostRecieveEventArgs)e;
-                args.Entity.Send($"${e.Content.Length}\r\n{e.Content}");
+                ClientHostRecieveEventArgs args = (ClientHostRecieveEventArgs)e;
+                args.ResultData = e.Content;
+                args.Result = HostEventResults.Finished;
             } else {
                 //命令模式
 
@@ -39,8 +40,8 @@ namespace ServerDome {
                     // 输出内容
                     Console.WriteLine($"-> 定义数据长度：{len}");
 
-                    ServerHostRecieveEventArgs args = (ServerHostRecieveEventArgs)e;
-                    args.Entity.SetDataMode(len);
+                    ClientHostRecieveEventArgs args = (ClientHostRecieveEventArgs)e;
+                    args.Client.SetDataMode(len);
                 }
             }
 

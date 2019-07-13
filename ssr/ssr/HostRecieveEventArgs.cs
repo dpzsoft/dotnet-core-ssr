@@ -5,19 +5,30 @@ using System.Text;
 namespace ssr {
 
     /// <summary>
+    /// 宿主事件返回
+    /// </summary>
+    public enum HostEventResults {
+
+        /// <summary>
+        /// 默认返回
+        /// </summary>
+        Normal = 0,
+
+        /// <summary>
+        /// 事件完成
+        /// </summary>
+        Finished = 1,
+
+        /// <summary>
+        /// 事件处理发生异常
+        /// </summary>
+        Error = -1
+    }
+
+    /// <summary>
     /// 服务器宿主事件参数
     /// </summary>
-    public class ServerHostRecieveEventArgs : System.EventArgs, IDisposable {
-
-        /// <summary>
-        /// 获取服务端对象
-        /// </summary>
-        public Server Server { get; internal set; }
-
-        /// <summary>
-        /// 获取服务端实体对象
-        /// </summary>
-        public ServerEntity Entity { get; internal set; }
+    public class HostRecieveEventArgs : System.EventArgs, IDisposable {
 
         /// <summary>
         /// 事件内容
@@ -28,8 +39,6 @@ namespace ssr {
         /// 释放资源
         /// </summary>
         public void Dispose() {
-            this.Server = null;
-            this.Entity = null;
             this.Content = null;
         }
     }

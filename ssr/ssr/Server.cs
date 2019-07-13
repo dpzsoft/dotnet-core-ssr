@@ -17,7 +17,7 @@ namespace ssr {
         /// <summary>
         /// 事件宿主
         /// </summary>
-        internal IServerHost Host { get; private set; }
+        internal Type HostType { get; private set; }
 
         /// <summary>
         /// 获取工作标识
@@ -34,10 +34,10 @@ namespace ssr {
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public Server(IServerHost host, IPAddress ip, int port) {
+        public Server(Type type, IPAddress ip, int port) {
 
             // 设置事件宿主
-            this.Host = host;
+            this.HostType = type;
 
             // 实例化基础网络通讯组件
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -58,8 +58,8 @@ namespace ssr {
         /// <param name="ip"></param>
         /// <param name="port"></param>
         /// <returns></returns>
-        public static Server Build(IServerHost host, IPAddress ip, int port) {
-            return new Server(host, ip, port);
+        public static Server Build(Type type, IPAddress ip, int port) {
+            return new Server(type, ip, port);
         }
 
         // 接受连接
@@ -138,6 +138,13 @@ namespace ssr {
 
             // 断开监听
             _socket.Close();
+
+            // 断开所有连接并清理实体列表
+            foreach (ServerEntity entity in this.Entities) {
+                entity.Dispose();
+            }
+            this.Entities.Clear();
+
         }
 
     }

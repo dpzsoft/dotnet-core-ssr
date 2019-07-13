@@ -7,8 +7,8 @@ namespace ServerDome {
 
             // 建立一个新的服务端
             ssr.Server.Build(
-                // 实例化一个宿主对象
-                new ServerHost(),
+                // 关联宿主对象类型
+                typeof(ServerHost),
                 // 绑定IP
                 IPAddress.Any,
                 // 设置服务端口

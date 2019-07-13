@@ -9,16 +9,22 @@ namespace ssr {
     /// <summary>
     /// ssr服务端工作实体
     /// </summary>
-    public class ServerEntity {
+    public class ServerEntity : IDisposable {
 
         // 基础网络通讯流
         private NetworkStream _stream;
 
-        // 缓存
-        private byte[] _buffer;
+        // 宿主处理对象
+        private IHost _host;
 
-        // 临时命令字节列表
-        private List<byte> _command;
+        // 数据接收线程
+        System.Threading.Thread _recieveThread;
+
+        // 缓存及关联参数
+        private List<byte> _command;//命令迷失缓存字节列表
+        private byte[] _buffer;//数据模式缓存数组
+        private int _offset;//当前处理偏移
+        private bool _dataMode;//是否为数据模式
 
         /// <summary>
         /// 获取工作标识
@@ -30,69 +36,142 @@ namespace ssr {
         /// </summary>
         public Server Server { get; private set; }
 
-        // 接收数据
-        private void Recieve(IAsyncResult result) {
+        /// <summary>
+        /// 设置为命令模式
+        /// </summary>
+        public void SetCommandMode() {
+            _dataMode = false;
+        }
 
-            // 获取数据长度
-            int len = _stream.EndRead(result);
+        /// <summary>
+        /// 设置为数据模式
+        /// </summary>
+        /// <param name="len">数据长度</param>
+        public void SetDataMode(int len) {
+            _buffer = new byte[len];
+            _dataMode = true;
 
-            // 设置回车标志
-            bool r = false;
+            // 初始化偏移
+            _offset = 0;
+        }
 
-            // 遍历数据
-            for (int i = 0; i < len; i++) {
-                switch (_buffer[i]) {
-                    case 13://回车(\r)
+        // 接收数据线程
+        private void RecieveThread() {
 
-                        // 出现两个连续的回车标志则视为非常规
-                        if (r) {
-                            //调试输出错误信息
-                            Debug.WriteLine("-> Error:规则外的回车符");
-                        }
+            try {
 
-                        r = true;
-                        break;
-                    case 10://换行(\n)
+                // 初始化回车标志
+                bool r = false;
 
-                        if (r) {
-                            //获取行命令并重置回车标志
-                            string cmd = System.Text.Encoding.UTF8.GetString(_command.ToArray());
-                            r = false;
+                // 工作正常时循环读取内容
+                while (this.Working) {
 
-                            //执行业务调用
+                    // 根据当前模式读取数据
+                    if (_dataMode) {
+                        #region [=====数据模式=====]
+
+                        // 根据缓存大小读取数据
+                        int len = _stream.Read(_buffer, _offset, _buffer.Length - _offset);
+
+                        // 增加数据偏移
+                        _offset += len;
+
+                        // 判断数据是否读取完毕,如已读取完毕，则开始处理业务
+                        if (_offset >= _buffer.Length) {
+
+                            // 获取数据字符串
+                            string data = System.Text.Encoding.UTF8.GetString(_buffer);
+
+                            // 执行业务调用
                             using (ServerHostRecieveEventArgs e = new ServerHostRecieveEventArgs()) {
                                 e.Server = this.Server;
                                 e.Entity = this;
-                                e.Content = cmd;
+                                e.Content = data;
 
                                 //执行宿主事件
-                                this.Server.Host.OnRecieve(e);
+                                _host.OnRecieve(e);
                             }
 
+                            // 设置为命令模式
+                            SetCommandMode();
+
+                        }
+
+                        #endregion
+                    } else {
+                        #region [=====命令模式=====]
+                        //命令模式,判断换行标志提取命令
+
+                        // 读取一个字节
+                        int bs = _stream.ReadByte();
+
+                        if (bs >= 0) {
+                            // 读入正常数据后进行数据解析
+                            switch (bs) {
+                                case 13://回车(\r)
+
+                                    // 出现两个连续的回车标志则视为非常规
+                                    if (r) {
+                                        //调试输出错误信息
+                                        Debug.WriteLine("-> Error:规则外的回车符");
+                                    }
+
+                                    r = true;
+                                    break;
+                                case 10://换行(\n)
+
+                                    if (r) {
+                                        //获取行命令并重置回车标志
+                                        string cmd = System.Text.Encoding.UTF8.GetString(_command.ToArray());
+                                        r = false;
+
+                                        //执行业务调用
+                                        using (ServerHostRecieveEventArgs e = new ServerHostRecieveEventArgs()) {
+                                            e.Server = this.Server;
+                                            e.Entity = this;
+                                            e.Content = cmd;
+
+                                            //执行宿主事件
+                                            _host.OnRecieve(e);
+                                        }
+
+                                    } else {
+                                        //调试输出错误信息
+                                        Debug.WriteLine("-> Error:规则外的换行符");
+                                    }
+
+                                    // 清除命令字节列表
+                                    _command.Clear();
+                                    break;
+                                default:
+
+                                    // 正常情况下，不应该在此处出现回车标志
+                                    if (r) {
+                                        //调试输出错误信息
+                                        Debug.WriteLine("-> Error:规则外的换行符");
+
+                                        // 清除命令字节列表并重置回车标志
+                                        _command.Clear();
+                                        r = false;
+                                    }
+
+                                    // 将命令字符加入命令字节列表中
+                                    _command.Add((byte)bs);
+                                    break;
+                            }
                         } else {
-                            //调试输出错误信息
-                            Debug.WriteLine("-> Error:规则外的换行符");
+                            // 未读取数据，则线程等待毫秒，防止线程阻塞
+                            System.Threading.Thread.Sleep(10);
                         }
 
-                        // 清除命令字节列表
-                        _command.Clear();
-                        break;
-                    default:
+                        #endregion
+                    }
 
-                        // 正常情况下，不应该在此处出现回车标志
-                        if (r) {
-                            //调试输出错误信息
-                            Debug.WriteLine("-> Error:规则外的换行符");
-
-                            // 清除命令字节列表并重置回车标志
-                            _command.Clear();
-                            r = false;
-                        }
-
-                        // 将命令字符加入命令字节列表中
-                        _command.Add(_buffer[i]);
-                        break;
                 }
+
+            } catch (Exception ex) {
+                // 调试输出错误信息
+                Debug.WriteLine($"-> Error:{ex.Message}");
             }
 
         }
@@ -107,13 +186,25 @@ namespace ssr {
             // 设置关联服务端
             this.Server = server;
 
+            // 初始化宿主对象
+            _host = Activator.CreateInstance(server.HostType) as IHost;
+
             // 初始化缓存
-            _buffer = new byte[4096];
             _command = new List<byte>();
 
-            //新建流并接收客户端消息
+            // 默认设置为命令模式
+            SetCommandMode();
+
+            // 新建消息流
             _stream = new NetworkStream(socket);
-            _stream.BeginRead(_buffer, 0, _buffer.Length, new AsyncCallback(Recieve), _stream);
+
+            // 设置工作标识
+            this.Working = true;
+
+            // 建立一个处理接收数据的线程
+            _recieveThread = new System.Threading.Thread(RecieveThread);
+            _recieveThread.Start();
+
         }
 
         /// <summary>
@@ -132,5 +223,34 @@ namespace ssr {
             _stream.Write(System.Text.Encoding.UTF8.GetBytes(content + "\r\n"));
         }
 
+        /// <summary>
+        /// 关闭连接
+        /// </summary>
+        public void Close() {
+
+            // 设置工作标识
+            if (this.Working) this.Working = false;
+
+            try {
+                // 结束线程
+                _recieveThread.Abort();
+
+                // 关闭连接
+                _stream.Close();
+            } catch (Exception ex) {
+                //调试输出错误信息
+                Debug.WriteLine($"-> Error:{ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose() {
+            this.Close();
+            _host = null;
+            _buffer = null;
+            _stream.Dispose();
+        }
     }
 }
