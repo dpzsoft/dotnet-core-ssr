@@ -24,7 +24,11 @@ namespace ssr {
         private List<byte> _command;//命令迷失缓存字节列表
         private byte[] _buffer;//数据模式缓存数组
         private int _offset;//当前处理偏移
-        private bool _dataMode;//是否为数据模式
+
+        /// <summary>
+        /// 获取当前是否为数据模式
+        /// </summary>
+        public bool DataMode { get; private set; }
 
         /// <summary>
         /// 获取工作标识
@@ -40,7 +44,7 @@ namespace ssr {
         /// 设置为命令模式
         /// </summary>
         public void SetCommandMode() {
-            _dataMode = false;
+            this.DataMode = false;
         }
 
         /// <summary>
@@ -49,7 +53,7 @@ namespace ssr {
         /// <param name="len">数据长度</param>
         public void SetDataMode(int len) {
             _buffer = new byte[len];
-            _dataMode = true;
+            this.DataMode = true;
 
             // 初始化偏移
             _offset = 0;
@@ -67,7 +71,7 @@ namespace ssr {
                 while (this.Working) {
 
                     // 根据当前模式读取数据
-                    if (_dataMode) {
+                    if (this.DataMode) {
                         #region [=====数据模式=====]
 
                         // 根据缓存大小读取数据
@@ -211,8 +215,17 @@ namespace ssr {
         /// 向客户端发送内容
         /// </summary>
         /// <param name="content"></param>
+        public void Send(byte[] bytes) {
+            _stream.Write(bytes);
+            _stream.Flush();
+        }
+
+        /// <summary>
+        /// 向客户端发送内容
+        /// </summary>
+        /// <param name="content"></param>
         public void Send(string content) {
-            _stream.Write(System.Text.Encoding.UTF8.GetBytes(content));
+            Send(System.Text.Encoding.UTF8.GetBytes(content));
         }
 
         /// <summary>
@@ -220,7 +233,7 @@ namespace ssr {
         /// </summary>
         /// <param name="content"></param>
         public void Sendln(string content) {
-            _stream.Write(System.Text.Encoding.UTF8.GetBytes(content + "\r\n"));
+            Send(content + "\r\n");
         }
 
         /// <summary>

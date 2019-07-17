@@ -24,7 +24,11 @@ namespace ssr {
         private List<byte> _command;//命令迷失缓存字节列表
         private byte[] _buffer;//数据模式缓存数组
         private int _offset;//当前处理偏移
-        private bool _dataMode;//是否为数据模式
+
+        /// <summary>
+        /// 获取当前是否为数据模式
+        /// </summary>
+        public bool DataMode { get; private set; }
 
         // 宿主处理对象
         private IHost _host;
@@ -33,7 +37,7 @@ namespace ssr {
         /// 设置为命令模式
         /// </summary>
         public void SetCommandMode() {
-            _dataMode = false;
+            DataMode = false;
         }
 
         /// <summary>
@@ -42,7 +46,7 @@ namespace ssr {
         /// <param name="len">数据长度</param>
         public void SetDataMode(int len) {
             _buffer = new byte[len];
-            _dataMode = true;
+            DataMode = true;
 
             // 初始化偏移
             _offset = 0;
@@ -70,12 +74,12 @@ namespace ssr {
         /// <summary>
         /// 发送数据
         /// </summary>
-        /// <param name="content">待发送的操作命令，以\r\n结尾</param>
+        /// <param name="bytes">待发送的字节数组</param>
         /// <param name="callback">回调函数</param>
-        public void Send(string content, SendCallback callback = null) {
+        public void Send(byte[] bytes, SendCallback callback = null) {
 
             // 发送信息
-            _stream.Write(Encoding.UTF8.GetBytes(content));
+            _stream.Write(bytes);
             _stream.Flush();
 
             // 当设置了回调后，开始等待接收数据
@@ -94,7 +98,7 @@ namespace ssr {
                 while (!isEnd) {
 
                     // 根据当前模式读取数据
-                    if (_dataMode) {
+                    if (this.DataMode) {
                         #region [=====数据模式=====]
 
                         // 根据缓存大小读取数据
@@ -208,69 +212,22 @@ namespace ssr {
                         #endregion
                     }
 
-                    ////读取一个数据
-                    //int bs = _stream.ReadByte();
-
-                    //switch (bs) {
-                    //    case 13:// 回车(\r)
-
-                    //        // 出现两个连续的回车标志则视为非常规
-                    //        if (r) {
-                    //            // 调试输出错误信息
-                    //            Debug.WriteLine("-> Error:规则外的回车符");
-                    //        }
-
-                    //        r = true;
-                    //        break;
-                    //    case 10:// 换行(\n)
-
-                    //        if (r) {
-                    //            // 获取内容并重置回车标志
-                    //            string str = System.Text.Encoding.UTF8.GetString(_command.ToArray());
-                    //            r = false;
-
-                    //            // 执行业务处理
-                    //            using (ClientHostRecieveEventArgs e = new ClientHostRecieveEventArgs()) {
-                    //                e.Client = this;
-                    //                e.Content = str;
-
-                    //                //执行宿主事件
-                    //                _host.OnRecieve(e);
-
-                    //                if (e.Result == HostEventResults.Finished) {
-                    //                    // 设置回调
-                    //                    callback(e.ResultData);
-
-                    //                    // 设置结束标志
-                    //                    isEnd = true;
-                    //                }
-                    //            }
-
-                    //        } else {
-                    //            // 调试输出错误信息
-                    //            Debug.WriteLine("-> Error:规则外的换行符");
-                    //        }
-                    //        break;
-                    //    default:
-
-                    //        // 正常情况下，不应该在此处出现回车标志
-                    //        if (r) {
-                    //            //调试输出错误信息
-                    //            Debug.WriteLine("-> Error:规则外的换行符");
-
-                    //            // 清除命令字节列表并重置回车标志
-                    //            _command.Clear();
-                    //            r = false;
-                    //        }
-
-                    //        // 将命令字符加入命令字节列表中
-                    //        _command.Add((byte)bs);
-                    //        break;
-                    //}
                 }
 
 
             }
+
+        }
+
+        /// <summary>
+        /// 发送数据
+        /// </summary>
+        /// <param name="content">待发送的操作命令，以\r\n结尾</param>
+        /// <param name="callback">回调函数</param>
+        public void Send(string content, SendCallback callback = null) {
+
+            // 发送信息
+            Send(Encoding.UTF8.GetBytes(content), callback);
 
         }
 
